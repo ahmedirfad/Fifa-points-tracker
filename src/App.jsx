@@ -5,14 +5,14 @@ const INITIAL_PLAYERS = [
   'Afnan', 'Dilshad', 'Hana', 'Haris', 'Imad',
   'Irfad', 'Iyad', 'Najad', 'Rammi', 'Rebi',
   'Riyas', 'Saif', 'Thaju', 'Thanu',
-].map((name, i) => ({ 
-  id: i + 1, 
-  name, 
+].map((name, i) => ({
+  id: i + 1,
+  name,
   existingPoints: 0,
   todayPoints: 0,
   totalPoints: 0,
   zeroPointMatch: 0,
-  bestSingleDay: 0  // Hidden column - only for admin reference
+  bestSingleDay: 0
 }));
 
 const getRankDisplay = (rank) => {
@@ -37,9 +37,9 @@ const getFormattedDates = () => {
   const today = new Date();
   const yesterday = new Date();
   yesterday.setDate(today.getDate() - 1);
-  
+
   const fmt = (d) =>
-    `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(-2)}`;
+    `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getFullYear()).slice(-2)}`;
   return { today: fmt(today), yesterday: fmt(yesterday) };
 };
 
@@ -49,7 +49,7 @@ export default function App() {
   const [editVal, setEditVal] = useState('');
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
   const [saving, setSaving] = useState(false);
-  const [showHidden, setShowHidden] = useState(false); // Toggle for admin view
+  const [showHidden, setShowHidden] = useState(false);
   const tableRef = useRef(null);
   const dates = getFormattedDates();
 
@@ -78,17 +78,17 @@ export default function App() {
   const getAllTimeBest = () => {
     let bestPlayer = null;
     let bestPoints = 0;
-    
+
     players.forEach(player => {
       if ((player.bestSingleDay || 0) > bestPoints) {
         bestPoints = player.bestSingleDay;
         bestPlayer = player;
       }
     });
-    
+
     return { bestPlayer, bestPoints };
   };
-  
+
   const { bestPlayer, bestPoints } = getAllTimeBest();
 
   // Ranking logic with proper tie handling
@@ -97,17 +97,17 @@ export default function App() {
       if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
       return a.zeroPointMatch - b.zeroPointMatch;
     });
-    
+
     const ranked = [];
     let currentRank = 1;
-    
+
     for (let i = 0; i < sorted.length; i++) {
       if (i === 0) {
         ranked.push({ ...sorted[i], rank: currentRank });
       } else {
         const prev = sorted[i - 1];
         const curr = sorted[i];
-        
+
         if (curr.totalPoints === prev.totalPoints && curr.zeroPointMatch === prev.zeroPointMatch) {
           ranked.push({ ...curr, rank: currentRank });
         } else {
@@ -116,10 +116,10 @@ export default function App() {
         }
       }
     }
-    
+
     return ranked;
   };
-  
+
   const ranked = getRankedPlayers();
 
   const showToast = (message, type = 'success') => {
@@ -140,28 +140,27 @@ export default function App() {
       setEditing(null);
       return;
     }
-    
+
     setPlayers(prev => prev.map(p => {
       if (p.id !== editing.id) return p;
-      
+
       const updated = { ...p };
-      
+
       if (editing.field === 'todayPoints') {
-        const oldValue = p.todayPoints || 0;
         updated.todayPoints = num;
         updated.totalPoints = (p.existingPoints || 0) + num;
-        
+
         // Update best single day performance (all-time record)
         if (num > (p.bestSingleDay || 0)) {
           updated.bestSingleDay = num;
         }
-        
-        if (num === 0 && oldValue !== 0) {
+
+        // ALWAYS increment zeroPointMatch when todayPoints is 0
+        // This counts EVERY time a player gets 0 points in a match day
+        if (num === 0) {
           updated.zeroPointMatch = (p.zeroPointMatch || 0) + 1;
         }
-        else if (num > 0 && oldValue === 0 && p.zeroPointMatch > 0) {
-          updated.zeroPointMatch = p.zeroPointMatch - 1;
-        }
+        // If num > 0, zeroPointMatch stays the SAME (never resets, never decreases)
       }
       else if (editing.field === 'existingPoints') {
         updated.existingPoints = num;
@@ -173,10 +172,10 @@ export default function App() {
       else if (editing.field === 'bestSingleDay') {
         updated.bestSingleDay = num;
       }
-      
+
       return updated;
     }));
-    
+
     setEditing(null);
     showToast('Updated!', 'success');
   };
@@ -188,23 +187,25 @@ export default function App() {
 
   const newDay = () => {
     if (!window.confirm('Start new day? Today\'s total will become existing points for tomorrow.')) return;
-    
+
     setPlayers(prev => prev.map(p => ({
       ...p,
       existingPoints: p.totalPoints,
       todayPoints: 0,
       totalPoints: p.totalPoints
+      // zeroPointMatch - PRESERVED (never resets)
+      // bestSingleDay - PRESERVED (never resets)
     })));
-    showToast('New day started! Data auto-saved.', 'success');
+    showToast('New day started! Zero point matches and best day records preserved.', 'success');
   };
 
   const resetAll = () => {
-    if (!window.confirm('Reset ALL points to zero?')) return;
-    setPlayers(prev => prev.map(p => ({ 
-      ...p, 
-      existingPoints: 0, 
-      todayPoints: 0, 
-      totalPoints: 0, 
+    if (!window.confirm('Reset ALL points to zero? This will also reset zero point matches and best day records.')) return;
+    setPlayers(prev => prev.map(p => ({
+      ...p,
+      existingPoints: 0,
+      todayPoints: 0,
+      totalPoints: 0,
       zeroPointMatch: 0,
       bestSingleDay: 0
     })));
@@ -292,7 +293,7 @@ export default function App() {
             <p className="text-sm font-bold" style={{ color: '#c9a84c' }}>
               {bestPoints > 0 ? `${bestPoints} pts` : '-'}
             </p>
-            <p className="text-[10px] font-semibold uppercase tracking-widest mt-1" style={{ color: 'rgba(61,0,0,0.45)' }}> All-Time Best Day</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest mt-1" style={{ color: 'rgba(61,0,0,0.45)' }}>🔥 All-Time Best Day</p>
           </div>
         </div>
 
@@ -372,22 +373,24 @@ export default function App() {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr style={{ borderBottom: '2px solid rgba(120,0,0,1)' }}>
-                  <th className="py-3 px-3 text-left text-xs font-bold uppercase" style={{ color: '#7a0000' }}>Rank</th>
-                  <th className="py-3 px-3 text-left text-xs font-bold uppercase" style={{ color: '#7a0000' }}>Name</th>
-                  <th className="py-3 px-3 text-center text-xs font-bold uppercase" style={{ color: '#7a0000' }}>
+                <tr style={{ borderBottom: '2px solid rgba(120,0,0,0.3)' }}>
+                  <th className="py-3 px-3 text-left text-xs font-bold uppercase" style={{ color: '#7a0000', borderRight: '1px solid rgba(120,0,0,0.1)' }}>Rank</th>
+                  <th className="py-3 px-3 text-left text-xs font-bold uppercase" style={{ color: '#7a0000', borderRight: '1px solid rgba(120,0,0,0.1)' }}>Name</th>
+                  <th className="py-3 px-3 text-center text-xs font-bold uppercase" style={{ color: '#7a0000', borderRight: '1px solid rgba(120,0,0,0.1)' }}>
                     Existing Pts
                     <div className="text-[10px] font-normal" style={{ color: 'rgba(61,0,0,0.45)' }}>({dates.yesterday})</div>
                   </th>
-                  <th className="py-3 px-3 text-center text-xs font-bold uppercase" style={{ color: '#7a0000' }}>
+                  <th className="py-3 px-3 text-center text-xs font-bold uppercase" style={{ color: '#7a0000', borderRight: '1px solid rgba(120,0,0,0.1)' }}>
                     Today's Pts
                     <div className="text-[10px] font-normal" style={{ color: 'rgba(61,0,0,0.45)' }}>({dates.today})</div>
                   </th>
-                  <th className="py-3 px-3 text-center text-xs font-bold uppercase" style={{ color: '#7a0000' }}>
+                  <th className="py-3 px-3 text-center text-xs font-bold uppercase" style={{ color: '#7a0000', borderRight: '1px solid rgba(120,0,0,0.1)' }}>
                     Total Pts
                     <div className="text-[10px] font-normal" style={{ color: 'rgba(61,0,0,0.45)' }}>({dates.today})</div>
                   </th>
-                  <th className="py-3 px-3 text-center text-xs font-bold uppercase" style={{ color: '#7a0000' }}>Zero Pt/Match</th>
+                  <th className="py-3 px-3 text-center text-xs font-bold uppercase" style={{ color: '#7a0000', borderRight: showHidden ? '1px solid rgba(120,0,0,0.1)' : 'none' }}>
+                    Zero Pt/Match
+                  </th>
                   {showHidden && (
                     <th className="py-3 px-3 text-center text-xs font-bold uppercase" style={{ color: '#7a0000' }}>
                       Best Day (Admin)
@@ -397,29 +400,29 @@ export default function App() {
                 </tr>
               </thead>
               <tbody>
-                {ranked.map((player) => {
+                {ranked.map((player, idx) => {
+                  const isLastRow = idx === ranked.length - 1;
                   return (
                     <tr
                       key={player.id}
                       style={{
-                        borderBottom: '1px solid rgba(120,0,0,0.6)',
-                        background: player.rank === 1 ? 'rgba(201,168,76,0.08)' : 'transparent'
+                        borderBottom: isLastRow ? 'none' : '1px solid rgba(120,0,0,0.15)',
+                        background: player.rank === 1 ? 'rgba(201,168,76,0.06)' : 'transparent'
                       }}
                     >
-                      <td className="py-3 px-3">
-                        <span className={`font-bold ${
-                          player.rank === 1 ? 'text-amber-600' : 
-                          player.rank === 2 ? 'text-slate-500' : 
-                          player.rank === 3 ? 'text-amber-700' : 
-                          'text-gray-500'
-                        }`}>
+                      <td className="py-3 px-3" style={{ borderRight: '1px solid rgba(120,0,0,0.08)' }}>
+                        <span className={`font-bold ${player.rank === 1 ? 'text-amber-600' :
+                            player.rank === 2 ? 'text-slate-500' :
+                              player.rank === 3 ? 'text-amber-700' :
+                                'text-gray-500'
+                          }`}>
                           {getRankDisplay(player.rank)}
                         </span>
                       </td>
-                      <td className="py-3 px-3">
+                      <td className="py-3 px-3" style={{ borderRight: '1px solid rgba(120,0,0,0.08)' }}>
                         <span className="font-semibold text-sm" style={{ color: '#3d0000' }}>{player.name}</span>
                       </td>
-                      <td className="py-3 px-3 text-center">
+                      <td className="py-3 px-3 text-center" style={{ borderRight: '1px solid rgba(120,0,0,0.08)' }}>
                         {editing?.id === player.id && editing?.field === 'existingPoints' ? (
                           <input
                             autoFocus
@@ -441,7 +444,7 @@ export default function App() {
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-3 text-center">
+                      <td className="py-3 px-3 text-center" style={{ borderRight: '1px solid rgba(120,0,0,0.08)' }}>
                         {editing?.id === player.id && editing?.field === 'todayPoints' ? (
                           <input
                             autoFocus
@@ -462,10 +465,10 @@ export default function App() {
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-3 text-center">
+                      <td className="py-3 px-3 text-center" style={{ borderRight: '1px solid rgba(120,0,0,0.08)' }}>
                         <span className="font-black text-base" style={{ color: '#3d0000' }}>{player.totalPoints}</span>
                       </td>
-                      <td className="py-3 px-3 text-center">
+                      <td className="py-3 px-3 text-center" style={{ borderRight: showHidden ? '1px solid rgba(120,0,0,0.08)' : 'none' }}>
                         {editing?.id === player.id && editing?.field === 'zeroPointMatch' ? (
                           <input
                             autoFocus
