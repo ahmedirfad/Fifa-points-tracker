@@ -2,9 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import html2canvas from 'html2canvas';
 
 const INITIAL_PLAYERS = [
-  'Afnan', 'Dilshad', 'Hana', 'Haris', 'Imad',
-  'Irfad', 'Iyad', 'Najad', 'Rammi', 'Rebi',
-  'Riyas', 'Saif', 'Thaju', 'Thanu',
+  'Afnan', 'Dilshad', 'Hana', 'Haris', 'Hiba',  // ← Hiba added here
+  'Imad', 'Irfad', 'Iyad', 'Najad', 'Rammi', 
+  'Rebi', 'Riyas', 'Saif', 'Thaju', 'Thanu',
 ].map((name, i) => ({
   id: i + 1,
   name,
@@ -30,6 +30,7 @@ const getRankDisplay = (rank) => {
   if (rank === 12) return '12th';
   if (rank === 13) return '13th';
   if (rank === 14) return '14th';
+  if (rank === 15) return '15th';
   return `${rank}th`;
 };
 
@@ -156,11 +157,9 @@ export default function App() {
         }
 
         // ALWAYS increment zeroPointMatch when todayPoints is 0
-        // This counts EVERY time a player gets 0 points in a match day
         if (num === 0) {
           updated.zeroPointMatch = (p.zeroPointMatch || 0) + 1;
         }
-        // If num > 0, zeroPointMatch stays the SAME (never resets, never decreases)
       }
       else if (editing.field === 'existingPoints') {
         updated.existingPoints = num;
@@ -193,8 +192,6 @@ export default function App() {
       existingPoints: p.totalPoints,
       todayPoints: 0,
       totalPoints: p.totalPoints
-      // zeroPointMatch - PRESERVED (never resets)
-      // bestSingleDay - PRESERVED (never resets)
     })));
     showToast('New day started! Zero point matches and best day records preserved.', 'success');
   };
